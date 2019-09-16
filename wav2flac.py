@@ -116,12 +116,18 @@ def tagflac(indir, outdir, config):
     convert_dict = read_yaml(convert_config)
     metaflac_dir(outdir, tag_list, convert_dict)
 
-def metaflac(outdir):
+def metaflac(outdir, config):
+    metaflac = config.get('metaflac')
+    if metaflac is None:
+        metaflac = 'metaflac'
+    else:
+        metaflac = path.expanduser(metaflac)
+
     flacfiles = [e for e in listdir(outdir) if e.endswith('.flac')]
     flacfiles = sorted(flacfiles)
     logfile = path.join(outdir, 'metaflac.log')
     with open(logfile, 'w') as fp:
-        metaflac_list_process = subprocess.run(['metaflac', '--list', '--block-type=VORBIS_COMMENT', *flacfiles], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=outdir)
+        metaflac_list_process = subprocess.run([metaflac, '--list', '--block-type=VORBIS_COMMENT', *flacfiles], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=outdir)
         metaflac_list_output = metaflac_list_process.stdout.decode('utf-8')
         log_multi_lines(logger, metaflac_list_output)
         fp.write(metaflac_list_output)
@@ -159,7 +165,7 @@ def execute(indir, outdir, config, no_convert, no_overwrite, files_to_check):
     # Edit FLAC files and copy cover image file
     copy_image(indir, outdir)
     tagflac(indir, outdir, config)
-    metaflac(outdir)
+    metaflac(outdir, config)
 
 def main():
     import argparse
