@@ -1,8 +1,9 @@
 from logging import basicConfig, getLogger, FileHandler, Formatter, StreamHandler, BASIC_FORMAT, DEBUG, INFO
-from os import chdir, listdir, makedirs, path, remove, sep as os_sep
+from os import chdir, listdir, makedirs, path, remove, sep as os_sep, unlink
 import re
 from shutil import copyfile
 import subprocess
+from tempfile import mkstemp
 import yaml
 
 from tagflac.tagflac import metaflac_dir
@@ -35,6 +36,15 @@ def log_multi_lines(logger, line_with_newlines, *, level=INFO):
     for line in line_with_newlines.split('\n'):
         logger.log(level, f'> {line}')
 
+def strip_cr(filepath):
+    _, temp = mkstemp()
+    copyfile(filepath, temp)
+    with open(temp, 'r', newline='\n') as fp_in:
+        with open(filepath, 'w', newline='\n') as fp_out:
+            for line in fp_in:
+                fp_out.write(re.sub(r'\r$', '', line))
+    unlink(temp)
+
 def split_to_flac(indir, outdir, config):
     shntool = config.get('shntool')
     if shntool is None:
@@ -45,7 +55,8 @@ def split_to_flac(indir, outdir, config):
     wavfile = path.join(indir, 'a.wav')
     cuefile = path.join(indir, 'a.cue')
     logger.info(f'Splitting {wavfile} using shntool')
-    with open(path.join(outdir, 'shnsplit.log'), 'w') as fp:
+    logfile = path.join(outdir, 'shnsplit.log')
+    with open(logfile, 'w') as fp:
         outdir_rel, cuefile_rel, wavfile_rel = [path.relpath(e, outdir) for e in [outdir, cuefile, wavfile]]
         shnsplit_process = subprocess.run([shntool, 'split', '-O', 'always', '-d', outdir_rel, '-o', 'flac', '-f', cuefile_rel, '-t', '%n', wavfile_rel], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=outdir)
         shnsplit_output = shnsplit_process.stdout.decode('utf-8')
@@ -60,6 +71,8 @@ def split_to_flac(indir, outdir, config):
             fp.write(logstr)
             remove(short_file)
 
+    strip_cr(logfile)
+
 def copy_image(indir, outdir):
     meta = read_yaml(path.join(indir, 'meta.yml'))
 
@@ -73,7 +86,8 @@ def copy_image(indir, outdir):
     if filename is None:
         filename = img.get('filename')
 
-    with open(path.join(outdir, 'image.log'), 'w') as fp:
+    logfile = path.join(outdir, 'image.log')
+    with open(logfile, 'w') as fp:
         if filename is not None:
             _, ext = path.splitext(filename)
             if ext in ['.jpg', 'jpeg', '.JPG', 'JPEG']:
@@ -85,6 +99,8 @@ def copy_image(indir, outdir):
             logger.info(logstr)
             fp.write(logstr)
             copyfile(infile, outfile)
+
+    strip_cr(logfile)
 
 def tagflac(indir, outdir, config):
     logger_tagflac = getLogger('tagflac.tagflac')
@@ -103,11 +119,14 @@ def tagflac(indir, outdir, config):
 def metaflac(outdir):
     flacfiles = [e for e in listdir(outdir) if e.endswith('.flac')]
     flacfiles = sorted(flacfiles)
-    with open(path.join(outdir, 'metaflac.log'), 'w') as fp:
+    logfile = path.join(outdir, 'metaflac.log')
+    with open(logfile, 'w') as fp:
         metaflac_list_process = subprocess.run(['metaflac', '--list', '--block-type=VORBIS_COMMENT', *flacfiles], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=outdir)
         metaflac_list_output = metaflac_list_process.stdout.decode('utf-8')
         log_multi_lines(logger, metaflac_list_output)
         fp.write(metaflac_list_output)
+
+    strip_cr(logfile)
 
 def calculate_outdir(indir):
     indir_separated = re.split(os_sep, path.abspath(indir))
