@@ -116,6 +116,8 @@ def tagflac(indir, outdir, config):
     convert_dict = read_yaml(convert_config)
     metaflac_dir(outdir, tag_list, convert_dict)
 
+    logger_tagflac.removeHandler(handler)
+
 def metaflac(outdir, config):
     metaflac = config.get('metaflac')
     if metaflac is None:
