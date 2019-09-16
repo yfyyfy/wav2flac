@@ -98,6 +98,7 @@ def tagflac(indir, outdir, config):
 
 def metaflac(outdir):
     flacfiles = [e for e in listdir(outdir) if e.endswith('.flac')]
+    flacfiles = sorted(flacfiles)
     with open(path.join(outdir, 'metaflac.log'), 'w') as fp:
         metaflac_list_process = subprocess.run(['metaflac', '--list', '--block-type=VORBIS_COMMENT', *flacfiles], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=outdir)
         metaflac_list_output = metaflac_list_process.stdout.decode('utf-8')
