@@ -11,7 +11,11 @@ logger = getLogger(__name__)
 
 def read_yaml(filepath):
     with open(filepath) as fp:
-        return yaml.safe_load(fp)
+        ret = yaml.safe_load(fp)
+        if ret is None:
+            return {}
+        else:
+            return ret
     raise Exception(f'Read yaml file failed: {filepath}')
 
 def strip_bs(string):
@@ -177,6 +181,8 @@ def main():
         config = read_yaml(path.join(path.dirname(__file__), 'config.yml'))
     else:
         config = yaml.safe_load(args.config)
+        if config is None:
+            config = {}
 
     files_to_check = ['meta.yml', 'tags.yml']
     if not args.no_convert:
