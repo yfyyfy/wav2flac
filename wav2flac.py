@@ -102,11 +102,32 @@ def copy_image(indir, outdir):
 
     strip_cr(logfile)
 
+DEFAULT_CONVERT_CONFIG = 'tagflac/tests/data/metaflac_real_world01/convert.yml'
 def tagflac(indir, outdir, config):
-    logger_tagflac = getLogger('tagflac.tagflac')
+    meta = read_yaml(path.join(indir, 'meta.yml'))
 
-    convert_config = config.get('convert_config', path.join(path.dirname(__file__), 'tagflac/tests/data/metaflac_real_world01/convert.yml'))
+    # Find convert_config file (used for converting data in tags.yml into flac tags)
+    # by multifold fallback mechanism.
+    # convert_config file is one of the ones below.
+    # The first one discovered is used.
+    # 1. 'convert_config' entry in config file specified with '--config' on the command line.
+    #    Its path is relative to current directory.
+    # 1.1. 'convert_config' entry in config.yml in the same directory as this file.
+    #      This is effective only wehn config file does not specified on the command line (see main()).
+    # 2. 'convert_config' entry in meta.yml in indir.
+    #    Its path is relative to indir.
+    # 3. DEFAULT_CONVERT_CONFIG
+    #    Its path is relative to this file.
+    convert_config = config.get('convert_config')
+    if convert_config is None:
+        convert_config = meta.get('convert_config')
+        if convert_config is not None:
+            convert_config = path.join(indir, convert_config)
+    if convert_config is None:
+        convert_config = path.join(path.dirname(__file__), DEFAULT_CONVERT_CONFIG)
     convert_config = path.expanduser(convert_config)
+
+    logger_tagflac = getLogger('tagflac.tagflac')
 
     handler = FileHandler(filename=path.join(outdir, 'tagflac.log'), mode='w')
     handler.setFormatter(Formatter(BASIC_FORMAT))
