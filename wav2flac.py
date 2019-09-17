@@ -80,7 +80,7 @@ def copy_image(indir, outdir):
     src = img.get('src')
     filename = None
     if src is not None:
-        matchOB = re.match('^.*/([^/]*)', src)
+        matchOB = re.match('^.*/([^/?]*)', src)
         if matchOB:
             filename = matchOB.group(1)
     if filename is None:
